@@ -1,0 +1,19 @@
+# Normalize line endings: store everything as LF in the repo so files work
+# under WSL/Linux even when edited on Windows.
+* text=auto eol=lf
+
+# Shell scripts must always be LF (CRLF breaks them under bash/WSL).
+*.sh   text eol=lf
+
+# Windows-only scripts keep CRLF.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binary files: never touch.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.zip  binary
