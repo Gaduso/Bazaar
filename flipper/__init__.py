@@ -14,7 +14,9 @@ from .api import BazaarAPI, ItemsAPI
 from .blacklist import Blacklist
 from .calculator import (
     DAILY_NPC_SELL_CAP,
+    DEFAULT_BAZAAR_CAPTURE_FACTOR,
     DEFAULT_CAPTURE_FACTOR,
+    SPREAD_SUSPECT_RATIO,
     TAX_RATE,
     FlipOpportunity,
     NpcAllocation,
@@ -36,6 +38,8 @@ __all__ = [
     "TAX_RATE",
     "DAILY_NPC_SELL_CAP",
     "DEFAULT_CAPTURE_FACTOR",
+    "DEFAULT_BAZAAR_CAPTURE_FACTOR",
+    "SPREAD_SUSPECT_RATIO",
     "calculate_flip",
     "calculate_all_flips",
     "filter_flips",

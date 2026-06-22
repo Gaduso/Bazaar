@@ -213,6 +213,7 @@
   .pos { color: var(--green); }
   .neg { color: var(--red); }
   .roi { color: var(--blue); }
+  .warn { color: var(--accent); cursor: help; font-size: 13px; }
   .empty { padding: 40px; text-align: center; color: var(--muted); }
 </style>
 </head>
@@ -268,6 +269,10 @@
     <label for="min_roi">Min ROI %</label>
     <input id="min_roi" type="number" value="0" step="0.5" min="0">
   </div>
+  <div class="control" data-modes="bazaar">
+    <label for="bazaar_capture_factor" title="Share of the item's weekly flow you realistically win against competing flippers (0–1). Scales the 'Profit / hr (real)' column. Lower = more competition assumed.">Capture factor</label>
+    <input id="bazaar_capture_factor" type="number" value="0.15" min="0" max="1" step="0.05">
+  </div>
   <div class="control" data-modes="bazaar npc">
     <label for="min_buy_volume">Min weekly buys</label>
     <input id="min_buy_volume" type="number" value="50000" min="0">
@@ -309,14 +314,28 @@ const pretty = id => id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()
 const pct = n => fmt(n * 100, 1) + "%";
 const signClass = n => (n >= 0 ? "pos" : "neg");
 
+// Spread-manipulation hint: shown (not hidden) next to suspect items. The live
+// top-of-book spread is far wider than the order-book average, so it is likely
+// thin or manipulated and may not actually fill at this margin.
+function warnBadge(f) {
+  if (!f.spread_suspect) return "";
+  const ratio = f.spread_ratio
+    ? `${fmt(f.spread_ratio, 1)}× the order-book average`
+    : "the order-book average shows no profit at all";
+  const title = `Suspect spread: the live top-of-book margin is ${ratio}. `
+    + `This usually means a thin or manipulated front of book — your orders may not fill at this margin. Trade with caution.`;
+  return ` <span class="warn" title="${title}">&#9888;</span>`;
+}
+
 // ---------------------------------------------------------------------------
 // Mode definitions — columns, sort options, and which inputs to send.
 // ---------------------------------------------------------------------------
 const MODES = {
   bazaar: {
-    inputs: ["name", "sort", "min_margin", "max_buy_price", "min_roi", "min_buy_volume", "min_sell_volume", "limit"],
+    inputs: ["name", "sort", "min_margin", "max_buy_price", "min_roi", "bazaar_capture_factor", "min_buy_volume", "min_sell_volume", "limit"],
     sorts: [
-      ["profit_per_hour", "Profit / hour"],
+      ["effective_profit_per_hour", "Profit / hour (real)"],
+      ["profit_per_hour", "Profit / hour (raw)"],
       ["margin", "Margin / unit"],
       ["roi", "ROI %"],
       ["items_per_hour", "Items / hour"],
@@ -324,13 +343,14 @@ const MODES = {
       ["sell_moving_week", "Sell volume / week"],
     ],
     columns: [
-      { h: "Product", t: "", cls: () => "product", get: f => pretty(f.product_id) },
+      { h: "Product", t: "", cls: () => "product", get: f => pretty(f.product_id) + warnBadge(f) },
       { h: "Buy at", t: "Place a buy order just above this price", get: f => fmt(f.sell_price) },
       { h: "Sell at", t: "Place a sell offer just below this price", get: f => fmt(f.buy_price) },
       { h: "Margin", cls: f => signClass(f.margin), get: f => fmt(f.margin) },
       { h: "ROI", cls: () => "roi", get: f => fmt(f.roi, 1) + "%" },
       { h: "Items / hr", get: f => fmtInt(f.items_per_hour) },
-      { h: "Profit / hr", cls: f => signClass(f.profit_per_hour), get: f => fmtInt(f.profit_per_hour) },
+      { h: "Profit / hr (raw)", t: "Throughput × margin, assuming you win 100% of the flow", cls: () => "muted", get: f => fmtInt(f.profit_per_hour) },
+      { h: "Profit / hr (real)", t: "Profit / hr after the capture factor — what you realistically earn once competing flippers take their share", cls: f => signClass(f.effective_profit_per_hour), get: f => fmtInt(f.effective_profit_per_hour) },
       { h: "Buy vol / wk", cls: () => "muted", get: f => fmtInt(f.buy_moving_week) },
       { h: "Sell vol / wk", cls: () => "muted", get: f => fmtInt(f.sell_moving_week) },
     ],

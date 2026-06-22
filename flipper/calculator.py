@@ -34,6 +34,19 @@ DAYS_PER_WEEK: int = 7
 DAILY_NPC_SELL_CAP: float = 500_000_000.0  # Hypixel NPC sell limit, coins/day
 DEFAULT_CAPTURE_FACTOR: float = 0.3        # share of weekly buy-flow you win
 
+# Bazaar margin-flip realism constants.
+#
+# DEFAULT_BAZAAR_CAPTURE_FACTOR: the raw profit_per_hour assumes you alone win
+# 100% of the slower side's weekly flow. In practice dozens of flippers fight
+# over exactly the items with the best margins, so you realistically capture
+# only a fraction. effective_profit_per_hour scales profit_per_hour by this.
+DEFAULT_BAZAAR_CAPTURE_FACTOR: float = 0.15
+
+# SPREAD_SUSPECT_RATIO: when the live top-of-book margin is this many times the
+# whole-book (weighted-average) margin, the wide spread is likely thin or
+# manipulated and won't actually fill at that price. We flag — not hide — these.
+SPREAD_SUSPECT_RATIO: float = 2.0
+
 
 @dataclass(frozen=True)
 class FlipOpportunity:
@@ -63,6 +76,21 @@ class FlipOpportunity:
     # competition is considered.
     items_per_hour: float
     profit_per_hour: float
+
+    # profit_per_hour after applying the bazaar capture factor — a realistic
+    # estimate of what *you* earn once competing flippers take their share of
+    # the same flow. This is the honest number to rank bazaar flips by.
+    effective_profit_per_hour: float
+
+    # Spread-quality signal. spread_ratio = top-of-book margin / whole-book
+    # (weighted-average) margin. A ratio well above 1 means the live spread is
+    # much wider than the book as a whole — a hallmark of a thin or manipulated
+    # top of book that may not fill at this margin. None when there is no
+    # positive book-average margin to compare against. spread_suspect is the
+    # boolean the UI uses to show a warning (it is also True in the most
+    # suspect case: the whole book shows no profit but the top of book does).
+    spread_ratio: float | None
+    spread_suspect: bool
 
     # NPC flip ("buy on bazaar, sell to the NPC merchant"). The NPC sell price
     # is fixed per item and supplied by the Hypixel items resource; it is None
@@ -105,12 +133,17 @@ def calculate_flip(
     capture_factor: float = DEFAULT_CAPTURE_FACTOR,
     revenue_cap: float = DAILY_NPC_SELL_CAP,
     npc_buy_method: str = "buy_order",
+    bazaar_capture_factor: float = DEFAULT_BAZAAR_CAPTURE_FACTOR,
 ) -> FlipOpportunity:
     """Build a FlipOpportunity for one product entry from the bazaar payload.
 
     ``npc_buy_method`` selects how the NPC-flip acquisition cost is priced:
     ``"buy_order"`` (default) uses ``sell_price`` (place a buy order and wait),
     ``"instant_buy"`` uses ``buy_price`` (take the lowest sell offer now).
+
+    ``bazaar_capture_factor`` (0..1) scales ``profit_per_hour`` into
+    ``effective_profit_per_hour`` to account for competing flippers winning part
+    of the same flow.
     """
     quick = product_data.get("quick_status", {}) or {}
 
@@ -150,6 +183,25 @@ def calculate_flip(
     hourly_sell = sell_moving_week / HOURS_PER_WEEK
     items_per_hour = min(hourly_buy, hourly_sell)
     profit_per_hour = items_per_hour * margin
+    # Realistic earnings after competing flippers take their share of the flow.
+    effective_profit_per_hour = profit_per_hour * bazaar_capture_factor
+
+    # Spread-quality check: compare the live top-of-book margin against the
+    # whole-book weighted-average margin. A top-of-book spread far wider than the
+    # book average is a red flag for a thin or manipulated front of book.
+    weighted_sell = float(quick.get("sellPrice", 0.0) or 0.0)
+    weighted_buy = float(quick.get("buyPrice", 0.0) or 0.0)
+    weighted_margin = weighted_buy * (1.0 - tax_rate) - weighted_sell
+    spread_ratio: float | None = None
+    spread_suspect = False
+    if margin > 0:
+        if weighted_margin > 0:
+            spread_ratio = margin / weighted_margin
+            spread_suspect = spread_ratio >= SPREAD_SUSPECT_RATIO
+        else:
+            # Most suspect case: the book as a whole shows no profit, yet the
+            # top of book does — almost always a thin/manipulated front.
+            spread_suspect = True
 
     # NPC flip metrics — only meaningful when the NPC buys the item.
     npc_buy_price: float | None = None
@@ -190,6 +242,9 @@ def calculate_flip(
         sell_moving_week=sell_moving_week,
         items_per_hour=items_per_hour,
         profit_per_hour=profit_per_hour,
+        effective_profit_per_hour=effective_profit_per_hour,
+        spread_ratio=spread_ratio,
+        spread_suspect=spread_suspect,
         npc_sell_price=npc_sell_price,
         npc_buy_price=npc_buy_price,
         npc_margin=npc_margin,
@@ -208,6 +263,7 @@ def calculate_all_flips(
     capture_factor: float = DEFAULT_CAPTURE_FACTOR,
     revenue_cap: float = DAILY_NPC_SELL_CAP,
     npc_buy_method: str = "buy_order",
+    bazaar_capture_factor: float = DEFAULT_BAZAAR_CAPTURE_FACTOR,
 ) -> list[FlipOpportunity]:
     """Compute a FlipOpportunity for every product in a bazaar payload.
 
@@ -215,7 +271,8 @@ def calculate_all_flips(
     from the map are treated as not NPC-sellable (npc_* fields stay None).
 
     capture_factor and revenue_cap feed the per-item npc_daily_units /
-    npc_daily_profit estimates (see calculate_flip).
+    npc_daily_profit estimates (see calculate_flip). bazaar_capture_factor feeds
+    the effective_profit_per_hour estimate for margin flips.
     """
     products = api_data.get("products", {}) or {}
     npc = npc_sell_prices or {}
@@ -224,6 +281,7 @@ def calculate_all_flips(
             pid, pdata, tax_rate, npc.get(pid),
             capture_factor=capture_factor, revenue_cap=revenue_cap,
             npc_buy_method=npc_buy_method,
+            bazaar_capture_factor=bazaar_capture_factor,
         )
         for pid, pdata in products.items()
     ]

@@ -15,6 +15,7 @@ from flask import Flask, jsonify, render_template, request
 
 from flipper import (
     DAILY_NPC_SELL_CAP,
+    DEFAULT_BAZAAR_CAPTURE_FACTOR,
     DEFAULT_CAPTURE_FACTOR,
     BazaarAPI,
     Blacklist,
@@ -40,6 +41,7 @@ blacklist = Blacklist()  # file-backed; persists across restarts.
 # attribute lookups on user input.
 SORTABLE_FIELDS = {
     "profit_per_hour",
+    "effective_profit_per_hour",
     "margin",
     "roi",
     "items_per_hour",
@@ -59,7 +61,7 @@ SORTABLE_FIELDS = {
 # Default sort key per trading mode. "bazaar" = margin flips (buy order + sell
 # offer); "npc" = buy on bazaar, sell to the NPC merchant under the daily cap.
 DEFAULT_SORT_BY_MODE = {
-    "bazaar": "profit_per_hour",
+    "bazaar": "effective_profit_per_hour",
     "npc": "npc_profit_per_revenue",
 }
 
@@ -140,6 +142,10 @@ def api_flips():
     npc_buy_method = request.args.get("npc_buy_method", DEFAULT_NPC_BUY_METHOD)
     if npc_buy_method not in NPC_BUY_METHODS:
         npc_buy_method = DEFAULT_NPC_BUY_METHOD
+    # Bazaar-mode competition factor feeding effective_profit_per_hour.
+    bazaar_capture_factor = _query_float(
+        "bazaar_capture_factor", DEFAULT_BAZAAR_CAPTURE_FACTOR
+    )
 
     data = bazaar.fetch()
     npc_prices = items.npc_sell_prices()
@@ -149,6 +155,7 @@ def api_flips():
         capture_factor=capture_factor,
         revenue_cap=revenue_cap,
         npc_buy_method=npc_buy_method,
+        bazaar_capture_factor=bazaar_capture_factor,
     )
     flips = filter_flips(
         flips,
