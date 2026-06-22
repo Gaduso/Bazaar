@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bazaar Flipper</title>
+<style>
+  :root {
+    --bg: #0e1117;
+    --panel: #161b22;
+    --panel-2: #1f2a3a;
+    --border: #2a3142;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #ffd24a;
+    --green: #4ade80;
+    --blue: #60a5fa;
+    --red: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  h1 {
+    margin: 0;
+    color: var(--accent);
+    font-size: 22px;
+    letter-spacing: 0.3px;
+  }
+  .meta { color: var(--muted); font-size: 12px; }
+
+  /* Mode toggle */
+  .modes { display: flex; gap: 8px; margin-bottom: 14px; }
+  .mode-btn {
+    background: var(--panel);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    width: auto;
+  }
+  .mode-btn:hover { background: var(--panel-2); color: var(--text); }
+  .mode-btn.active {
+    background: var(--accent);
+    color: #1a1a2e;
+    border-color: var(--accent);
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .control { display: flex; flex-direction: column; gap: 4px; }
+  .control.hidden { display: none; }
+  .control label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .control input, .control select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+  }
+  .control input:focus, .control select:focus { border-color: var(--accent); }
+  .actions { display: flex; align-items: flex-end; }
+  button {
+    background: var(--accent);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%;
+  }
+  button:hover { background: #ffc107; }
+
+  /* NPC daily-plan summary panel */
+  #plan {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  #plan.hidden { display: none; }
+  .plan-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 14px;
+  }
+  .plan-cell .k {
+    font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.6px;
+  }
+  .plan-cell .v { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  .plan-note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+  .plan-note b { color: var(--text); }
+  .plan-details { margin-top: 12px; }
+  .plan-details > summary {
+    cursor: pointer; color: var(--accent); font-size: 13px;
+    font-weight: 600; padding: 6px 0; user-select: none;
+  }
+  .plan-table { margin-top: 8px; }
+  .bar {
+    height: 6px; border-radius: 3px; background: var(--panel-2);
+    margin-top: 8px; overflow: hidden;
+  }
+  .bar > div { height: 100%; background: var(--green); }
+
+  /* Blacklist panel */
+  .bl-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+  }
+  .bl-panel > summary {
+    cursor: pointer; color: var(--accent);
+    font-weight: 600; font-size: 13px; user-select: none;
+  }
+  .bl-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 14px; padding: 4px 4px 4px 12px; font-size: 12px;
+  }
+  .chip-x {
+    background: transparent; color: var(--muted); border: none;
+    width: 20px; height: 20px; padding: 0; font-size: 16px; line-height: 1;
+    border-radius: 50%; cursor: pointer;
+  }
+  .chip-x:hover { color: var(--red); background: transparent; }
+  .bl-empty { color: var(--muted); font-size: 12px; }
+  /* Per-row "hide / blacklist" button */
+  .bl-btn {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 5px;
+    width: 26px; height: 26px; padding: 0; font-size: 15px; line-height: 1;
+    cursor: pointer;
+  }
+  .bl-btn:hover { color: var(--red); border-color: var(--red); background: transparent; }
+  th.action, td.action { text-align: center; }
+
+  #stats {
+    color: var(--muted);
+    font-size: 12px;
+    margin: 6px 2px 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 13px;
+  }
+  thead th {
+    background: var(--panel-2);
+    color: var(--accent);
+    font-weight: 600;
+    text-align: right;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  thead th:first-child { text-align: left; }
+  tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #1c2330;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #1a2230; }
+  td.product { text-align: left; font-weight: 600; }
+  td.muted { color: var(--muted); }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .roi { color: var(--blue); }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Skyblock Bazaar Flipper</h1>
+  <div class="meta" id="last-updated"></div>
+</header>
+
+<div class="modes">
+  <button class="mode-btn active" data-mode="bazaar" id="mode-bazaar">Bazaar &rarr; Bazaar</button>
+  <button class="mode-btn" data-mode="npc" id="mode-npc">Bazaar &rarr; NPC</button>
+</div>
+
+<div class="controls">
+  <div class="control" data-modes="bazaar npc">
+    <label for="name">Name contains</label>
+    <input id="name" type="text" placeholder="e.g. shard" autocomplete="off">
+  </div>
+  <div class="control" data-modes="bazaar npc">
+    <label for="sort">Sort by</label>
+    <select id="sort"></select>
+  </div>
+  <div class="control" data-modes="bazaar">
+    <label for="min_margin">Min margin (coins)</label>
+    <input id="min_margin" type="number" value="100">
+  </div>
+  <div class="control" data-modes="npc">
+    <label for="min_npc_margin" title="Profit from buying on the bazaar (buy order) and selling to the NPC. Leave blank to ignore.">Min NPC margin</label>
+    <input id="min_npc_margin" type="number" placeholder="0">
+  </div>
+  <div class="control" data-modes="npc">
+    <label for="revenue_cap" title="Daily NPC sell cap — Hypixel limits NPC sales to 500M coins/day.">Daily NPC cap</label>
+    <input id="revenue_cap" type="number" value="500000000" min="0" step="1000000">
+  </div>
+  <div class="control" data-modes="npc">
+    <label for="capture_factor" title="Share of the weekly instant-sell flow you realistically win against competing buy orders (0–1).">Capture factor</label>
+    <input id="capture_factor" type="number" value="0.3" min="0" max="1" step="0.05">
+  </div>
+  <div class="control" data-modes="npc">
+    <label for="npc_buy_method" title="How you acquire the item before selling it to the NPC. Buy order = place an order and wait (cheaper). Instant buy = take the lowest sell offer now (faster, costs more).">Acquire via</label>
+    <select id="npc_buy_method">
+      <option value="buy_order">Buy order</option>
+      <option value="instant_buy">Instant buy</option>
+    </select>
+  </div>
+  <div class="control" data-modes="bazaar npc">
+    <label for="max_buy_price" title="Hide items whose instant-buy price exceeds this. Leave blank for no cap.">Max price (coins)</label>
+    <input id="max_buy_price" type="number" placeholder="off" min="0">
+  </div>
+  <div class="control" data-modes="bazaar">
+    <label for="min_roi">Min ROI %</label>
+    <input id="min_roi" type="number" value="0" step="0.5" min="0">
+  </div>
+  <div class="control" data-modes="bazaar npc">
+    <label for="min_buy_volume">Min weekly buys</label>
+    <input id="min_buy_volume" type="number" value="50000" min="0">
+  </div>
+  <div class="control" data-modes="bazaar">
+    <label for="min_sell_volume">Min weekly sells</label>
+    <input id="min_sell_volume" type="number" value="50000" min="0">
+  </div>
+  <div class="control" data-modes="bazaar npc">
+    <label for="limit">Top results</label>
+    <input id="limit" type="number" value="50" min="1" max="500">
+  </div>
+  <div class="control actions" data-modes="bazaar npc">
+    <button id="refresh-btn">Refresh now</button>
+  </div>
+</div>
+
+<details id="blacklist" class="bl-panel">
+  <summary id="bl-summary">Blacklist (0)</summary>
+  <div id="bl-chips" class="bl-chips"></div>
+</details>
+
+<div id="plan" class="hidden"></div>
+
+<div id="stats"></div>
+
+<table>
+  <thead><tr id="head"></tr></thead>
+  <tbody id="rows">
+    <tr><td class="empty" colspan="12">Loading&hellip;</td></tr>
+  </tbody>
+</table>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (n, dp = 2) => Number(n).toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+const fmtInt = n => Number(Math.round(n)).toLocaleString();
+const pretty = id => id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+const pct = n => fmt(n * 100, 1) + "%";
+const signClass = n => (n >= 0 ? "pos" : "neg");
+
+// ---------------------------------------------------------------------------
+// Mode definitions — columns, sort options, and which inputs to send.
+// ---------------------------------------------------------------------------
+const MODES = {
+  bazaar: {
+    inputs: ["name", "sort", "min_margin", "max_buy_price", "min_roi", "min_buy_volume", "min_sell_volume", "limit"],
+    sorts: [
+      ["profit_per_hour", "Profit / hour"],
+      ["margin", "Margin / unit"],
+      ["roi", "ROI %"],
+      ["items_per_hour", "Items / hour"],
+      ["buy_moving_week", "Buy volume / week"],
+      ["sell_moving_week", "Sell volume / week"],
+    ],
+    columns: [
+      { h: "Product", t: "", cls: () => "product", get: f => pretty(f.product_id) },
+      { h: "Buy at", t: "Place a buy order just above this price", get: f => fmt(f.sell_price) },
+      { h: "Sell at", t: "Place a sell offer just below this price", get: f => fmt(f.buy_price) },
+      { h: "Margin", cls: f => signClass(f.margin), get: f => fmt(f.margin) },
+      { h: "ROI", cls: () => "roi", get: f => fmt(f.roi, 1) + "%" },
+      { h: "Items / hr", get: f => fmtInt(f.items_per_hour) },
+      { h: "Profit / hr", cls: f => signClass(f.profit_per_hour), get: f => fmtInt(f.profit_per_hour) },
+      { h: "Buy vol / wk", cls: () => "muted", get: f => fmtInt(f.buy_moving_week) },
+      { h: "Sell vol / wk", cls: () => "muted", get: f => fmtInt(f.sell_moving_week) },
+    ],
+  },
+  npc: {
+    inputs: ["name", "sort", "min_npc_margin", "revenue_cap", "capture_factor", "npc_buy_method", "max_buy_price", "min_buy_volume", "limit"],
+    sorts: [
+      ["npc_daily_profit", "Potential daily profit"],
+      ["npc_profit_per_revenue", "Profit / revenue coin"],
+      ["npc_margin", "NPC margin / unit"],
+      ["npc_roi", "NPC ROI %"],
+      ["npc_profit_per_hour", "NPC profit / hour"],
+      ["npc_sell_price", "NPC sell price"],
+      ["buy_moving_week", "Buy volume / week"],
+    ],
+    columns: [
+      { h: "Product", cls: () => "product", get: f => pretty(f.product_id) },
+      { h: "Buy at", t: "Bazaar acquisition cost per unit (buy order or instant buy, per the 'Acquire via' toggle)", get: f => fmt(f.npc_buy_price) },
+      { h: "NPC sell", t: "Fixed price the NPC merchant pays", cls: () => "muted", get: f => fmtInt(f.npc_sell_price) },
+      { h: "NPC margin", t: "NPC sell price minus your buy-order cost (tax free)", cls: f => signClass(f.npc_margin), get: f => fmt(f.npc_margin) },
+      { h: "Units / day", t: "Units you can realistically acquire per day: weekly buy volume / 7 × capture factor (capped at the daily NPC sell cap)", cls: () => "muted", get: f => fmtInt(f.npc_daily_units) },
+      { h: "Daily profit", t: "Potential profit per day from this item alone: units/day × NPC margin. Reacts to the capture factor.", cls: f => signClass(f.npc_daily_profit), get: f => fmtInt(f.npc_daily_profit) },
+      { h: "Profit / rev", t: "Profit per coin of NPC revenue (npc_margin / npc_sell_price) — the metric to rank by under the daily cap", cls: () => "roi", get: f => pct(f.npc_profit_per_revenue) },
+      { h: "NPC ROI", t: "NPC margin / buy-order cost", cls: () => "roi", get: f => fmt(f.npc_roi, 1) + "%" },
+      { h: "Buy vol / wk", t: "How often people sell this into the bazaar (your supply)", cls: () => "muted", get: f => fmtInt(f.buy_moving_week) },
+    ],
+  },
+};
+
+let mode = "bazaar";
+
+// ---------------------------------------------------------------------------
+// UI wiring
+// ---------------------------------------------------------------------------
+function applyMode(next) {
+  mode = next;
+  document.querySelectorAll(".mode-btn").forEach(b =>
+    b.classList.toggle("active", b.dataset.mode === mode));
+
+  // Show only the controls relevant to this mode.
+  document.querySelectorAll(".control[data-modes]").forEach(c =>
+    c.classList.toggle("hidden", !c.dataset.modes.split(" ").includes(mode)));
+
+  // Repopulate the sort dropdown for this mode.
+  const sel = $("sort");
+  sel.innerHTML = MODES[mode].sorts
+    .map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+
+  $("plan").classList.toggle("hidden", mode !== "npc");
+  load();
+}
+
+function buildParams() {
+  const p = new URLSearchParams({ mode });
+  MODES[mode].inputs.forEach(id => {
+    const el = $(id);
+    if (el && el.value !== "") p.set(id, el.value);
+  });
+  return p;
+}
+
+function renderHead() {
+  $("head").innerHTML = MODES[mode].columns
+    .map(c => `<th${c.t ? ` title="${c.t}"` : ""}>${c.h}</th>`).join("")
+    + `<th class="action" title="Hide this item from results and the plan">Hide</th>`;
+}
+
+function renderRows(flips) {
+  const cols = MODES[mode].columns;
+  const span = cols.length + 1; // +1 for the action column
+  if (!flips || flips.length === 0) {
+    $("rows").innerHTML = `<tr><td class="empty" colspan="${span}">No flips match these filters.</td></tr>`;
+    return;
+  }
+  $("rows").innerHTML = flips.map(f =>
+    "<tr>" + cols.map(c => {
+      const cls = c.cls ? c.cls(f) : "";
+      return `<td${cls ? ` class="${cls}"` : ""}>${c.get(f)}</td>`;
+    }).join("")
+    + `<td class="action"><button class="bl-btn" data-id="${f.product_id}" title="Blacklist this item">&times;</button></td>`
+    + "</tr>"
+  ).join("");
+}
+
+// ---------------------------------------------------------------------------
+// Data loading
+// ---------------------------------------------------------------------------
+async function loadFlips() {
+  renderHead();
+  try {
+    const res = await fetch(`/api/flips?${buildParams()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    renderRows(data.flips);
+    $("stats").textContent = `Showing ${data.flips.length} of ${data.total_matching} matching items`;
+    if (data.last_updated) {
+      const ts = new Date(data.last_updated);
+      $("last-updated").textContent = `Bazaar last updated ${ts.toLocaleTimeString()}`;
+    }
+  } catch (err) {
+    $("rows").innerHTML = `<tr><td class="empty neg" colspan="${MODES[mode].columns.length + 1}">Failed to load: ${err.message}</td></tr>`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Blacklist
+// ---------------------------------------------------------------------------
+function renderBlacklist(ids) {
+  $("bl-summary").textContent = `Blacklist (${ids.length})`;
+  $("bl-chips").innerHTML = ids.length
+    ? ids.map(id =>
+        `<span class="chip">${pretty(id)}<button class="chip-x" data-id="${id}" title="Remove from blacklist">&times;</button></span>`
+      ).join("")
+    : `<span class="bl-empty">No items hidden. Use the &times; on any row to blacklist it.</span>`;
+}
+
+async function loadBlacklist() {
+  try {
+    const res = await fetch("/api/blacklist");
+    const d = await res.json();
+    renderBlacklist(d.blacklist || []);
+  } catch (err) { /* non-fatal */ }
+}
+
+async function blacklistAdd(id) {
+  await fetch("/api/blacklist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ product_id: id }),
+  });
+  await loadBlacklist();
+  load();
+}
+
+async function blacklistRemove(id) {
+  await fetch(`/api/blacklist/${encodeURIComponent(id)}`, { method: "DELETE" });
+  await loadBlacklist();
+  load();
+}
+
+async function loadPlan() {
+  const p = new URLSearchParams();
+  ["revenue_cap", "capture_factor", "min_npc_margin", "min_buy_volume", "npc_buy_method"].forEach(id => {
+    const el = $(id);
+    if (el && el.value !== "") p.set(id, el.value);
+  });
+  try {
+    const res = await fetch(`/api/plan?${p}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const d = await res.json();
+    const limited = d.limited_by === "revenue_cap"
+      ? `You hit the <b>${fmtInt(d.revenue_cap)}</b> daily NPC cap — your item <b>selection</b> is what drives profit now.`
+      : `You ran out of cheap NPC-profitable supply before the cap (<b>${pct(d.revenue_utilization)}</b> used) — you're <b>liquidity-limited</b>, not cap-limited.`;
+    const allocRows = (d.allocations || []).map((a, i) => `
+      <tr>
+        <td class="muted">${i + 1}</td>
+        <td class="product">${pretty(a.product_id)}</td>
+        <td>${fmtInt(a.units)}</td>
+        <td>${fmt(a.buy_price)}</td>
+        <td class="muted">${fmtInt(a.npc_sell_price)}</td>
+        <td class="${signClass(a.npc_margin)}">${fmt(a.npc_margin)}</td>
+        <td>${fmtInt(a.revenue)}</td>
+        <td class="muted">${fmtInt(a.cost)}</td>
+        <td class="${signClass(a.profit)}">${fmtInt(a.profit)}</td>
+      </tr>`).join("");
+    $("plan").innerHTML = `
+      <div class="plan-grid">
+        <div class="plan-cell"><div class="k">Max daily profit</div><div class="v pos">${fmtInt(d.total_profit)}</div></div>
+        <div class="plan-cell"><div class="k">NPC revenue used</div><div class="v">${fmtInt(d.total_revenue)}</div></div>
+        <div class="plan-cell"><div class="k">Capital to deploy</div><div class="v">${fmtInt(d.total_cost)}</div></div>
+        <div class="plan-cell"><div class="k">Items in plan</div><div class="v">${fmtInt(d.count)}</div></div>
+      </div>
+      <div class="bar"><div style="width:${Math.min(100, d.revenue_utilization * 100).toFixed(1)}%"></div></div>
+      <div class="plan-note">${limited} Cap utilization: <b>${pct(d.revenue_utilization)}</b>.</div>
+      <details class="plan-details" open>
+        <summary>Show the ${fmtInt(d.count)} items in this plan (your daily shopping list)</summary>
+        <table class="plan-table">
+          <thead><tr>
+            <th>#</th><th>Product</th>
+            <th title="How many to buy &amp; sell to the NPC today">Buy / sell</th>
+            <th title="Bazaar buy-order cost per unit">Buy at</th>
+            <th>NPC sell</th><th>NPC margin</th>
+            <th title="Counts against the daily 500M cap">Revenue</th>
+            <th title="Coins you tie up buying these">Capital</th>
+            <th>Profit</th>
+          </tr></thead>
+          <tbody>${allocRows || `<tr><td class="empty" colspan="9">No profitable NPC items found.</td></tr>`}</tbody>
+        </table>
+      </details>`;
+  } catch (err) {
+    $("plan").innerHTML = `<div class="plan-note neg">Plan failed: ${err.message}</div>`;
+  }
+}
+
+function load() {
+  loadFlips();
+  if (mode === "npc") loadPlan();
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+let nameTimer = null;
+const debounce = (fn, ms = 200) => () => {
+  clearTimeout(nameTimer);
+  nameTimer = setTimeout(fn, ms);
+};
+
+document.querySelectorAll(".mode-btn").forEach(b =>
+  b.addEventListener("click", () => applyMode(b.dataset.mode)));
+$("refresh-btn").addEventListener("click", load);
+document.querySelectorAll(".control input, .control select").forEach(el => {
+  if (el.id === "name") el.addEventListener("input", debounce(load));
+  else el.addEventListener("change", load);
+});
+
+// Event delegation: blacklist a row, or remove a chip from the blacklist.
+$("rows").addEventListener("click", e => {
+  const btn = e.target.closest(".bl-btn");
+  if (btn) blacklistAdd(btn.dataset.id);
+});
+$("bl-chips").addEventListener("click", e => {
+  const btn = e.target.closest(".chip-x");
+  if (btn) blacklistRemove(btn.dataset.id);
+});
+
+loadBlacklist();
+applyMode("bazaar");
+setInterval(load, 30_000); // auto-refresh
+</script>
+
+</body>
+</html>
