@@ -615,6 +615,10 @@ async function loadPlan() {
     const el = $(id);
     if (el && el.value !== "") p.set(id, el.value);
   });
+  // Preserve the shopping-list open/closed state across refreshes; default to
+  // open only on the very first render.
+  const prevDetails = $("plan").querySelector(".plan-details");
+  const listOpen = prevDetails ? prevDetails.open : true;
   try {
     const res = await fetch(`/api/plan?${p}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -643,7 +647,7 @@ async function loadPlan() {
       </div>
       <div class="bar"><div style="width:${Math.min(100, d.revenue_utilization * 100).toFixed(1)}%"></div></div>
       <div class="plan-note">${limited} Cap utilization: <b>${pct(d.revenue_utilization)}</b>.</div>
-      <details class="plan-details" open>
+      <details class="plan-details"${listOpen ? " open" : ""}>
         <summary>Show the ${fmtInt(d.count)} items in this plan (your daily shopping list)</summary>
         <table class="plan-table">
           <thead><tr>
