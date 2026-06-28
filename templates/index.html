@@ -29,7 +29,7 @@
   header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: baseline;
     margin-bottom: 16px;
     flex-wrap: wrap;
     gap: 8px;
@@ -42,8 +42,16 @@
   }
   .meta { color: var(--muted); font-size: 12px; }
 
-  /* Mode toggle */
-  .modes { display: flex; gap: 8px; margin-bottom: 14px; }
+  /* Toolbar: mode toggle on the left, actions on the right */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .toolbar .spacer { flex: 1 1 auto; }
+  .modes { display: flex; gap: 8px; }
   .mode-btn {
     background: var(--panel);
     color: var(--muted);
@@ -53,7 +61,6 @@
     font-weight: 600;
     font-size: 14px;
     cursor: pointer;
-    width: auto;
   }
   .mode-btn:hover { background: var(--panel-2); color: var(--text); }
   .mode-btn.active {
@@ -62,15 +69,45 @@
     border-color: var(--accent);
   }
 
+  /* Buttons */
+  .btn {
+    background: var(--accent);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .btn:hover { background: #ffc107; }
+  .btn-secondary {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--panel-2); }
+
+  /* Section / group labels */
+  .group-title {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 0 2px 8px;
+    font-weight: 700;
+  }
+
+  /* Control grids (used by the Filters card and the Advanced panel) */
   .controls {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 12px;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 16px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
   .control { display: flex; flex-direction: column; gap: 4px; }
   .control.hidden { display: none; }
@@ -90,19 +127,30 @@
     outline: none;
   }
   .control input:focus, .control select:focus { border-color: var(--accent); }
-  .actions { display: flex; align-items: flex-end; }
-  button {
-    background: var(--accent);
-    color: #1a1a2e;
-    border: none;
-    border-radius: 6px;
-    padding: 9px 16px;
-    font-weight: 600;
-    cursor: pointer;
-    font-size: 14px;
-    width: 100%;
+
+  /* Advanced tuning — collapsible so the default view stays uncluttered */
+  .advanced {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0 16px;
+    margin-bottom: 16px;
   }
-  button:hover { background: #ffc107; }
+  .advanced > summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 14px 0;
+    user-select: none;
+  }
+  .advanced .controls {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0 0 16px;
+    margin: 0;
+  }
 
   /* NPC daily-plan summary panel */
   #plan {
@@ -110,7 +158,7 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 16px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
   #plan.hidden { display: none; }
   .plan-grid {
@@ -143,13 +191,23 @@
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 12px 16px;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
   }
   .bl-panel > summary {
     cursor: pointer; color: var(--accent);
     font-weight: 600; font-size: 13px; user-select: none;
   }
-  .bl-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .bl-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-top: 12px;
+  }
+  .bl-chips { display: flex; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; }
+  .bl-clear {
+    background: transparent; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font-size: 12px; cursor: pointer; white-space: nowrap;
+  }
+  .bl-clear:hover { color: var(--red); border-color: var(--red); }
   .chip {
     display: inline-flex; align-items: center; gap: 4px;
     background: var(--panel-2); border: 1px solid var(--border);
@@ -224,75 +282,89 @@
   <div class="meta" id="last-updated"></div>
 </header>
 
-<div class="modes">
-  <button class="mode-btn active" data-mode="bazaar" id="mode-bazaar">Bazaar &rarr; Bazaar</button>
-  <button class="mode-btn" data-mode="npc" id="mode-npc">Bazaar &rarr; NPC</button>
+<div class="toolbar">
+  <div class="modes">
+    <button class="mode-btn active" data-mode="bazaar" id="mode-bazaar">Bazaar &rarr; Bazaar</button>
+    <button class="mode-btn" data-mode="npc" id="mode-npc">Bazaar &rarr; NPC</button>
+  </div>
+  <span class="spacer"></span>
+  <button id="refresh-btn" class="btn" title="Reload the data now">Refresh now</button>
+  <button id="reset-btn" class="btn btn-secondary" title="Reset all filter settings to their defaults">Reset settings</button>
 </div>
 
-<div class="controls">
-  <div class="control" data-modes="bazaar npc">
-    <label for="name">Name contains</label>
-    <input id="name" type="text" placeholder="e.g. shard" autocomplete="off">
+<div id="controls-wrap">
+  <div class="group-title">Filters</div>
+  <div class="controls" id="filters">
+    <div class="control" data-modes="bazaar npc">
+      <label for="name">Name contains</label>
+      <input id="name" type="text" placeholder="e.g. shard" autocomplete="off">
+    </div>
+    <div class="control" data-modes="bazaar npc">
+      <label for="sort">Sort by</label>
+      <select id="sort"></select>
+    </div>
+    <div class="control" data-modes="bazaar">
+      <label for="min_margin">Min margin (coins)</label>
+      <input id="min_margin" type="number" value="100">
+    </div>
+    <div class="control" data-modes="npc">
+      <label for="min_npc_margin" title="Profit from buying on the bazaar (buy order) and selling to the NPC. Leave blank to ignore.">Min NPC margin</label>
+      <input id="min_npc_margin" type="number" placeholder="0">
+    </div>
+    <div class="control" data-modes="bazaar npc">
+      <label for="max_buy_price" title="Hide items whose instant-buy price exceeds this. Leave blank for no cap.">Max price (coins)</label>
+      <input id="max_buy_price" type="number" placeholder="off" min="0">
+    </div>
+    <div class="control" data-modes="bazaar npc">
+      <label for="min_buy_volume">Min weekly buys</label>
+      <input id="min_buy_volume" type="number" value="50000" min="0">
+    </div>
+    <div class="control" data-modes="bazaar">
+      <label for="min_sell_volume">Min weekly sells</label>
+      <input id="min_sell_volume" type="number" value="50000" min="0">
+    </div>
+    <div class="control" data-modes="bazaar npc">
+      <label for="limit">Top results</label>
+      <input id="limit" type="number" value="50" min="1" max="500">
+    </div>
   </div>
-  <div class="control" data-modes="bazaar npc">
-    <label for="sort">Sort by</label>
-    <select id="sort"></select>
-  </div>
-  <div class="control" data-modes="bazaar">
-    <label for="min_margin">Min margin (coins)</label>
-    <input id="min_margin" type="number" value="100">
-  </div>
-  <div class="control" data-modes="npc">
-    <label for="min_npc_margin" title="Profit from buying on the bazaar (buy order) and selling to the NPC. Leave blank to ignore.">Min NPC margin</label>
-    <input id="min_npc_margin" type="number" placeholder="0">
-  </div>
-  <div class="control" data-modes="npc">
-    <label for="revenue_cap" title="Daily NPC sell cap — Hypixel limits NPC sales to 500M coins/day.">Daily NPC cap</label>
-    <input id="revenue_cap" type="number" value="500000000" min="0" step="1000000">
-  </div>
-  <div class="control" data-modes="npc">
-    <label for="capture_factor" title="Share of the weekly instant-sell flow you realistically win against competing buy orders (0–1).">Capture factor</label>
-    <input id="capture_factor" type="number" value="0.3" min="0" max="1" step="0.05">
-  </div>
-  <div class="control" data-modes="npc">
-    <label for="npc_buy_method" title="How you acquire the item before selling it to the NPC. Buy order = place an order and wait (cheaper). Instant buy = take the lowest sell offer now (faster, costs more).">Acquire via</label>
-    <select id="npc_buy_method">
-      <option value="buy_order">Buy order</option>
-      <option value="instant_buy">Instant buy</option>
-    </select>
-  </div>
-  <div class="control" data-modes="bazaar npc">
-    <label for="max_buy_price" title="Hide items whose instant-buy price exceeds this. Leave blank for no cap.">Max price (coins)</label>
-    <input id="max_buy_price" type="number" placeholder="off" min="0">
-  </div>
-  <div class="control" data-modes="bazaar">
-    <label for="min_roi">Min ROI %</label>
-    <input id="min_roi" type="number" value="0" step="0.5" min="0">
-  </div>
-  <div class="control" data-modes="bazaar">
-    <label for="bazaar_capture_factor" title="Share of the item's weekly flow you realistically win against competing flippers (0–1). Scales the 'Profit / hr (real)' column. Lower = more competition assumed.">Capture factor</label>
-    <input id="bazaar_capture_factor" type="number" value="0.15" min="0" max="1" step="0.05">
-  </div>
-  <div class="control" data-modes="bazaar npc">
-    <label for="min_buy_volume">Min weekly buys</label>
-    <input id="min_buy_volume" type="number" value="50000" min="0">
-  </div>
-  <div class="control" data-modes="bazaar">
-    <label for="min_sell_volume">Min weekly sells</label>
-    <input id="min_sell_volume" type="number" value="50000" min="0">
-  </div>
-  <div class="control" data-modes="bazaar npc">
-    <label for="limit">Top results</label>
-    <input id="limit" type="number" value="50" min="1" max="500">
-  </div>
-  <div class="control actions" data-modes="bazaar npc">
-    <button id="refresh-btn">Refresh now</button>
-  </div>
+
+  <details class="advanced" id="advanced">
+    <summary>Advanced tuning</summary>
+    <div class="controls">
+      <div class="control" data-modes="bazaar">
+        <label for="min_roi">Min ROI %</label>
+        <input id="min_roi" type="number" value="0" step="0.5" min="0">
+      </div>
+      <div class="control" data-modes="bazaar">
+        <label for="bazaar_capture_factor" title="Share of the item's weekly flow you realistically win against competing flippers (0–1). Scales the 'Profit / hr (real)' column. Lower = more competition assumed.">Capture factor</label>
+        <input id="bazaar_capture_factor" type="number" value="0.15" min="0" max="1" step="0.05">
+      </div>
+      <div class="control" data-modes="npc">
+        <label for="revenue_cap" title="Daily NPC sell cap — Hypixel limits NPC sales to 500M coins/day.">Daily NPC cap</label>
+        <input id="revenue_cap" type="number" value="500000000" min="0" step="1000000">
+      </div>
+      <div class="control" data-modes="npc">
+        <label for="capture_factor" title="Share of the weekly instant-sell flow you realistically win against competing buy orders (0–1).">Capture factor</label>
+        <input id="capture_factor" type="number" value="0.3" min="0" max="1" step="0.05">
+      </div>
+      <div class="control" data-modes="npc">
+        <label for="npc_buy_method" title="How you acquire the item before selling it to the NPC. Buy order = place an order and wait (cheaper). Instant buy = take the lowest sell offer now (faster, costs more).">Acquire via</label>
+        <select id="npc_buy_method">
+          <option value="buy_order">Buy order</option>
+          <option value="instant_buy">Instant buy</option>
+        </select>
+      </div>
+    </div>
+  </details>
 </div>
 
 <details id="blacklist" class="bl-panel">
   <summary id="bl-summary">Blacklist (0)</summary>
-  <div id="bl-chips" class="bl-chips"></div>
+  <div class="bl-head">
+    <div id="bl-chips" class="bl-chips"></div>
+    <button id="bl-clear" class="bl-clear" title="Remove every item from the blacklist">Clear all</button>
+  </div>
 </details>
 
 <div id="plan" class="hidden"></div>
@@ -313,6 +385,43 @@ const fmtInt = n => Number(Math.round(n)).toLocaleString();
 const pretty = id => id.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 const pct = n => fmt(n * 100, 1) + "%";
 const signClass = n => (n >= 0 ? "pos" : "neg");
+
+// ---------------------------------------------------------------------------
+// Cookie storage — settings and the blacklist both live client-side. The
+// blacklist cookie is sent automatically with every /api/ request, so the
+// server filters against it without holding any per-user state.
+// ---------------------------------------------------------------------------
+function setCookie(name, value, days = 365) {
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${days * 86400}; SameSite=Lax`;
+}
+function getCookie(name) {
+  const m = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
+  return m ? decodeURIComponent(m[1]) : null;
+}
+function delCookie(name) {
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+}
+
+// --- Settings (all control values + the active mode) -----------------------
+const settingsEls = () =>
+  document.querySelectorAll("#controls-wrap input[id], #controls-wrap select[id]");
+
+function saveSettings() {
+  const s = { mode };
+  settingsEls().forEach(el => { s[el.id] = el.value; });
+  setCookie("bz_settings", JSON.stringify(s));
+}
+function loadSettings() {
+  try { return JSON.parse(getCookie("bz_settings") || "{}") || {}; }
+  catch (e) { return {}; }
+}
+
+// --- Blacklist -------------------------------------------------------------
+function getBlacklist() {
+  try { const v = JSON.parse(getCookie("bz_blacklist") || "[]"); return Array.isArray(v) ? v : []; }
+  catch (e) { return []; }
+}
+function setBlacklist(ids) { setCookie("bz_blacklist", JSON.stringify(ids)); }
 
 // Spread-manipulation hint: shown (not hidden) next to suspect items. The live
 // top-of-book spread is far wider than the order-book average, so it is likely
@@ -385,7 +494,7 @@ let mode = "bazaar";
 // ---------------------------------------------------------------------------
 // UI wiring
 // ---------------------------------------------------------------------------
-function applyMode(next) {
+function applyMode(next, savedSort) {
   mode = next;
   document.querySelectorAll(".mode-btn").forEach(b =>
     b.classList.toggle("active", b.dataset.mode === mode));
@@ -394,12 +503,17 @@ function applyMode(next) {
   document.querySelectorAll(".control[data-modes]").forEach(c =>
     c.classList.toggle("hidden", !c.dataset.modes.split(" ").includes(mode)));
 
-  // Repopulate the sort dropdown for this mode.
+  // Repopulate the sort dropdown for this mode, restoring a saved choice if it
+  // is valid for the new mode.
   const sel = $("sort");
   sel.innerHTML = MODES[mode].sorts
     .map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+  if (savedSort && [...sel.options].some(o => o.value === savedSort)) {
+    sel.value = savedSort;
+  }
 
   $("plan").classList.toggle("hidden", mode !== "npc");
+  saveSettings();
   load();
 }
 
@@ -456,10 +570,12 @@ async function loadFlips() {
 }
 
 // ---------------------------------------------------------------------------
-// Blacklist
+// Blacklist (cookie-backed; no server round-trips)
 // ---------------------------------------------------------------------------
-function renderBlacklist(ids) {
+function renderBlacklist() {
+  const ids = getBlacklist();
   $("bl-summary").textContent = `Blacklist (${ids.length})`;
+  $("bl-clear").style.display = ids.length ? "" : "none";
   $("bl-chips").innerHTML = ids.length
     ? ids.map(id =>
         `<span class="chip">${pretty(id)}<button class="chip-x" data-id="${id}" title="Remove from blacklist">&times;</button></span>`
@@ -467,27 +583,29 @@ function renderBlacklist(ids) {
     : `<span class="bl-empty">No items hidden. Use the &times; on any row to blacklist it.</span>`;
 }
 
-async function loadBlacklist() {
-  try {
-    const res = await fetch("/api/blacklist");
-    const d = await res.json();
-    renderBlacklist(d.blacklist || []);
-  } catch (err) { /* non-fatal */ }
-}
-
-async function blacklistAdd(id) {
-  await fetch("/api/blacklist", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ product_id: id }),
-  });
-  await loadBlacklist();
+function blacklistAdd(id) {
+  id = String(id).trim().toUpperCase();
+  if (!id) return;
+  const ids = getBlacklist();
+  if (!ids.includes(id)) {
+    ids.push(id);
+    ids.sort();
+    setBlacklist(ids);
+  }
+  renderBlacklist();
   load();
 }
 
-async function blacklistRemove(id) {
-  await fetch(`/api/blacklist/${encodeURIComponent(id)}`, { method: "DELETE" });
-  await loadBlacklist();
+function blacklistRemove(id) {
+  setBlacklist(getBlacklist().filter(x => x !== id));
+  renderBlacklist();
+  load();
+}
+
+function blacklistClear() {
+  if (!getBlacklist().length) return;
+  delCookie("bz_blacklist");
+  renderBlacklist();
   load();
 }
 
@@ -559,12 +677,23 @@ const debounce = (fn, ms = 200) => () => {
   nameTimer = setTimeout(fn, ms);
 };
 
+// Persist settings on every change, then reload.
+function onControlChange() {
+  saveSettings();
+  load();
+}
+
 document.querySelectorAll(".mode-btn").forEach(b =>
-  b.addEventListener("click", () => applyMode(b.dataset.mode)));
+  b.addEventListener("click", () => applyMode(b.dataset.mode, $("sort").value)));
 $("refresh-btn").addEventListener("click", load);
+$("reset-btn").addEventListener("click", () => {
+  if (!confirm("Reset all filter settings to their defaults? Your blacklist is kept.")) return;
+  delCookie("bz_settings");
+  location.reload();
+});
 document.querySelectorAll(".control input, .control select").forEach(el => {
-  if (el.id === "name") el.addEventListener("input", debounce(load));
-  else el.addEventListener("change", load);
+  if (el.id === "name") el.addEventListener("input", debounce(onControlChange));
+  else el.addEventListener("change", onControlChange);
 });
 
 // Event delegation: blacklist a row, or remove a chip from the blacklist.
@@ -576,10 +705,21 @@ $("bl-chips").addEventListener("click", e => {
   const btn = e.target.closest(".chip-x");
   if (btn) blacklistRemove(btn.dataset.id);
 });
+$("bl-clear").addEventListener("click", blacklistClear);
 
-loadBlacklist();
-applyMode("bazaar");
-setInterval(load, 30_000); // auto-refresh
+// ---------------------------------------------------------------------------
+// Boot: restore saved settings + blacklist, then load.
+// ---------------------------------------------------------------------------
+(function init() {
+  const saved = loadSettings();
+  settingsEls().forEach(el => {
+    if (saved[el.id] !== undefined && el.id !== "sort") el.value = saved[el.id];
+  });
+  renderBlacklist();
+  applyMode(saved.mode === "npc" ? "npc" : "bazaar", saved.sort);
+})();
+
+setInterval(load, 30000); // auto-refresh
 </script>
 
 </body>

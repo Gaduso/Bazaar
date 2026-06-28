@@ -9,6 +9,7 @@ Then open http://127.0.0.1:5000 in your browser.
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict
 
 from flask import Flask, jsonify, render_template, request
@@ -18,7 +19,6 @@ from flipper import (
     DEFAULT_BAZAAR_CAPTURE_FACTOR,
     DEFAULT_CAPTURE_FACTOR,
     BazaarAPI,
-    Blacklist,
     ItemsAPI,
     calculate_all_flips,
     filter_flips,
@@ -34,7 +34,6 @@ from flipper import (
 app = Flask(__name__)
 bazaar = BazaarAPI(cache_ttl_seconds=30)
 items = ItemsAPI(cache_ttl_seconds=3600)  # NPC prices are static; cache long.
-blacklist = Blacklist()  # file-backed; persists across restarts.
 
 # Whitelist of fields the client is allowed to sort by. Anything else falls
 # back to profit_per_hour. This keeps the API tight and avoids reflective
@@ -90,6 +89,26 @@ def _query_int(name: str, default: int) -> int:
         return int(raw) if raw not in (None, "") else default
     except ValueError:
         return default
+
+
+def _cookie_blacklist() -> set[str]:
+    """Read the per-user blacklist from the ``bz_blacklist`` cookie.
+
+    The browser stores the blacklist client-side (see index.html) and sends it
+    automatically with every request, so the server holds no blacklist state.
+    The cookie is a URL-encoded JSON array of product IDs; anything malformed is
+    treated as an empty blacklist.
+    """
+    raw = request.cookies.get("bz_blacklist")
+    if not raw:
+        return set()
+    try:
+        ids = json.loads(raw)
+    except (ValueError, TypeError):
+        return set()
+    if not isinstance(ids, list):
+        return set()
+    return {str(x).strip().upper() for x in ids if str(x).strip()}
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +185,7 @@ def api_flips():
         min_npc_margin=min_npc_margin,
         max_buy_price=max_buy_price,
         name_query=name_query,
-        blacklist=blacklist.as_set(),
+        blacklist=_cookie_blacklist(),
     )
     flips = sort_flips(flips, key=sort_key)
 
@@ -203,7 +222,7 @@ def api_plan():
     )
     # Drop blacklisted items and (optionally) thinly traded ones before planning,
     # so they don't claim a slice of the cap.
-    bl = blacklist.as_set()
+    bl = _cookie_blacklist()
     flips = [
         f
         for f in flips
@@ -230,25 +249,6 @@ def api_plan():
         "allocations": [asdict(a) for a in plan.allocations[:limit]],
         "last_updated": data.get("lastUpdated"),
     })
-
-
-@app.route("/api/blacklist", methods=["GET", "POST"])
-def api_blacklist():
-    """List the blacklist (GET) or add an item to it (POST {"product_id": ...})."""
-    if request.method == "POST":
-        payload = request.get_json(silent=True) or {}
-        product_id = str(payload.get("product_id", "")).strip()
-        if not product_id:
-            return jsonify({"error": "product_id required"}), 400
-        blacklist.add(product_id)
-    return jsonify({"blacklist": blacklist.all()})
-
-
-@app.route("/api/blacklist/<path:product_id>", methods=["DELETE"])
-def api_blacklist_delete(product_id: str):
-    """Remove a single item from the blacklist."""
-    blacklist.remove(product_id)
-    return jsonify({"blacklist": blacklist.all()})
 
 
 @app.route("/api/health")
