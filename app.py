@@ -146,6 +146,14 @@ def api_flips():
     # drops non-NPC products) even when the user didn't set an explicit minimum.
     if mode == "npc" and min_npc_margin is None:
         min_npc_margin = 0.0
+    # NPC ROI floor: only apply when the param is present, dropping items the
+    # NPC won't buy (no npc_roi) along with anything below the threshold.
+    raw_min_npc_roi = request.args.get("min_npc_roi")
+    min_npc_roi = (
+        _query_float("min_npc_roi", 0.0)
+        if raw_min_npc_roi not in (None, "")
+        else None
+    )
     raw_max_buy = request.args.get("max_buy_price")
     max_buy_price = (
         _query_float("max_buy_price", 0.0)
@@ -183,6 +191,7 @@ def api_flips():
         min_buy_moving_week=min_buy_volume,
         min_sell_moving_week=min_sell_volume,
         min_npc_margin=min_npc_margin,
+        min_npc_roi=min_npc_roi,
         max_buy_price=max_buy_price,
         name_query=name_query,
         blacklist=_cookie_blacklist(),

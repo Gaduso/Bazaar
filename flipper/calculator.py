@@ -297,6 +297,7 @@ def filter_flips(
     min_buy_volume: int = 0,
     min_sell_volume: int = 0,
     min_npc_margin: float | None = None,
+    min_npc_roi: float | None = None,
     max_buy_price: float | None = None,
     name_query: str = "",
     blacklist: set[str] | None = None,
@@ -308,7 +309,8 @@ def filter_flips(
     buyers (your sell offer won't fill).
 
     When min_npc_margin is set, only NPC-sellable items whose npc_margin clears
-    the threshold are kept (items the NPC won't buy are dropped).
+    the threshold are kept (items the NPC won't buy are dropped). min_npc_roi
+    applies the same kind of floor to npc_roi (NPC margin / buy-order cost).
 
     max_buy_price caps the per-unit acquisition cost (instant-buy price), acting
     as a budget filter so you only see items you can afford.
@@ -334,6 +336,10 @@ def filter_flips(
         and (
             min_npc_margin is None
             or (f.npc_margin is not None and f.npc_margin >= min_npc_margin)
+        )
+        and (
+            min_npc_roi is None
+            or (f.npc_roi is not None and f.npc_roi >= min_npc_roi)
         )
         and (max_buy_price is None or f.buy_price <= max_buy_price)
         and (not needle or needle in f.product_id.lower())

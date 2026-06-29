@@ -345,6 +345,10 @@
         <input id="revenue_cap" type="number" value="500000000" min="0" step="1000000">
       </div>
       <div class="control" data-modes="npc">
+        <label for="min_npc_roi" title="Minimum NPC ROI % (NPC margin / buy-order cost). Leave blank to ignore.">Min NPC ROI %</label>
+        <input id="min_npc_roi" type="number" placeholder="off" step="0.5" min="0">
+      </div>
+      <div class="control" data-modes="npc">
         <label for="capture_factor" title="Share of the weekly instant-sell flow you realistically win against competing buy orders (0–1).">Capture factor</label>
         <input id="capture_factor" type="number" value="0.3" min="0" max="1" step="0.05">
       </div>
@@ -465,7 +469,7 @@ const MODES = {
     ],
   },
   npc: {
-    inputs: ["name", "sort", "min_npc_margin", "revenue_cap", "capture_factor", "npc_buy_method", "max_buy_price", "min_buy_volume", "limit"],
+    inputs: ["name", "sort", "min_npc_margin", "min_npc_roi", "revenue_cap", "capture_factor", "npc_buy_method", "max_buy_price", "min_buy_volume", "limit"],
     sorts: [
       ["npc_daily_profit", "Potential daily profit"],
       ["npc_profit_per_revenue", "Profit / revenue coin"],
